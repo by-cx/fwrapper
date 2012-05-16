@@ -1,0 +1,5 @@
+#!/usr/local/bin/fwrapper.py
+
+filter64 -N TEST
+filter64 -A FORWARD -j TEST
+filter64 -A TEST --dport 80 -j ACCEPT
