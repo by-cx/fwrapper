@@ -6,6 +6,7 @@ import sys
 import datetime
 import shlex
 from subprocess import PIPE, Popen
+#from termcolor import colored, cprint
 
 def log(msg):
     date = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -26,6 +27,22 @@ def run(cmd):
         sys.exit(1)
 
 # Classes
+
+class Color:
+    header = '\033[95m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    RED = '\033[93m'
+    RED2 = '\033[91m'
+    ENDC = '\033[0m'
+
+    def disable(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.ENDC = ''
 
 class Firewall(object):
     rules = {
@@ -64,35 +81,6 @@ class Firewall(object):
                         self.rules["nat"].append(cmd[1:])
                     if cmd[0] in ["forward", "output", "input"]:
                         self.policy[cmd[0].upper()] = cmd[1].upper()
-
-    def rule_format(self, rule):
-        chain = ""
-        prefix = ""
-        action = ""
-        options = []
-        last = ""
-        for parm in rule:
-            if last == "chain":
-                chain = parm
-            elif last == "jump":
-                action = parm
-
-            if parm == "-A":
-                last = "chain"
-                prefix = "ADD to"
-                continue
-            if parm == "-N":
-                last = "chain"
-                prefix = "NEW   "
-                continue
-            elif parm in ["-j"]:
-                last = "jump"
-                continue
-            elif last == "":
-                options.append(parm)
-
-            last = ""
-        return "%s %s" % (prefix, chain), " ".join(options), action
 
     def start_cmd_generator(self):
         cmds = []
@@ -146,8 +134,39 @@ class Firewall(object):
         for cmd in cmds:
             run(cmd) 
 
+    def rule_format(self, rule):
+        chain = ""
+        prefix = ""
+        action = ""
+        options = []
+        last = ""
+        for parm in rule:
+            if last == "chain":
+                chain = parm
+            elif last == "jump":
+                action = parm
+
+            if parm == "-A":
+                last = "chain"
+                prefix = "ADD to"
+                continue
+            if parm == "-N":
+                last = "chain"
+                prefix = "NEW   "
+                continue
+            elif parm in ["-j"]:
+                last = "jump"
+                continue
+            elif last == "":
+                options.append(parm)
+
+            last = ""
+        return "%s %s" % (prefix, chain), " ".join(options), action
+            
     def print_rules(self):
         for ruletype in self.rules:
+            if not self.rules[ruletype]: continue
+            
             if ruletype == "filter4":
                 print "Firewall for IPv4"
                 print 
@@ -157,22 +176,27 @@ class Firewall(object):
             if ruletype == "nat":
                 print "Firewall - NAT"
                 print 
-            print " Chain".ljust(20),
+            print "-------------------------------------------------------------------------------------------------------"
+            print "|",
+            print "Chain".ljust(20),
             print "|",
             print "Options".ljust(55),
             print "|",
-            print "Action".ljust(20)
-            print
+            print "Action/Jump".ljust(18),
+            print "|"
             print "-------------------------------------------------------------------------------------------------------"
-            print
 
             for rule in self.rules[ruletype]:
                 chain, options, action = self.rule_format(rule)
+            
+                print "|",
                 print chain.ljust(20),
                 print "|",
                 print options.ljust(55),
                 print "|",
-                print action.ljust(20)
+                print action.ljust(18),
+                print "|"
+            print "-------------------------------------------------------------------------------------------------------"
 
             print 
 
@@ -205,18 +229,21 @@ def restart():
 
 # Actions
 
-if _action == "start":
-    start()
-    log("Fw %s started" % _script)
-elif _action == "stop":
-    stop()
-    log("Fw %s stopped" % _script)
-elif _action == "restart":
-    restart()
-    log("Fw %s restarted" % _script)
-elif _action == "list":
-    firewall.print_rules()
-else:
-    print " Usage:"
-    print "  %s start|restart|stop|list" % _script
+def main():
+    if _action == "start":
+        start()
+        log("Fw %s started" % _script)
+    elif _action == "stop":
+        stop()
+        log("Fw %s stopped" % _script)
+    elif _action == "restart":
+        restart()
+        log("Fw %s restarted" % _script)
+    elif _action == "list":
+        firewall.print_rules()
+    else:
+        print " Usage:"
+        print "  %s start|restart|stop|list" % _script
 
+if __name__ == "__main__":
+    main()

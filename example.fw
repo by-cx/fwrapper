@@ -1,4 +1,4 @@
-#!/usr/local/bin/fwrapper.py
+#!/usr/local/bin/fwrapper
 
 input DROP
 output ACCEPT
