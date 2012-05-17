@@ -1,5 +1,12 @@
 #!/usr/local/bin/fwrapper.py
 
+input DROP
+output ACCEPT
+forward DROP
+
 filter64 -N TEST
 filter64 -A FORWARD -j TEST
 filter64 -A TEST --dport 80 -j ACCEPT
+filter64 -A TEST --dport 443 -j ACCEPT
+filter64 -A TEST --dport 5000 -j ACCEPT
+filter64 -A TEST --dport 53 -j ACCEPT
