@@ -21,9 +21,9 @@ def run(cmd):
     p = Popen(cmd, stdout=PIPE, stderr=PIPE)
     stdout, stderr = p.communicate()
     if stdout:
-        log(strout)
+        log(stdout)
     if stderr:
-        log(strerr)
+        log(stderr)
         sys.exit(1)
 
 # Classes
@@ -98,11 +98,15 @@ class Firewall(object):
             cmds.append(["iptables", "-P", chain, self.policy[chain]])
             cmds.append(["ip6tables", "-P", chain, self.policy[chain]])
 
+        ##TODO:save rules on the disk to stop action
+            
         return cmds
 
     def stop_cmd_generator(self):
         cmds = []
 
+        ##TODO:load rules from the disk
+        
         for ruletype in self.rules:
             rules = self.rules[ruletype]
             rules.reverse()

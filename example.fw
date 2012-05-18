@@ -1,12 +1,26 @@
 #!/usr/local/bin/fwrapper
 
+# Default policy for IPv4 and IPv6
 input DROP
 output ACCEPT
 forward DROP
 
+# Rules for IPv4 and IPv6
 filter64 -N TEST
 filter64 -A FORWARD -j TEST
 filter64 -A TEST --dport 80 -j ACCEPT
 filter64 -A TEST --dport 443 -j ACCEPT
 filter64 -A TEST --dport 5000 -j ACCEPT
 filter64 -A TEST --dport 53 -j ACCEPT
+
+# Rules for IPv6
+filter6 -A TEST --dport 25 -j ACCEPT
+filter6 -A TEST -s 2002::/16 -j DROP
+
+# Rules for IPv4
+filter -A TEST --dport 111 -j ACCEPT
+filter -A TEST -s 2.2.2.0/24 -j ACCEPT
+
+# NAT rules
+nat -A POSTROUTING -o eth0 -j MASQUERADE
+nat -A POSTROUTING -o eth1 -j MASQUERADE
