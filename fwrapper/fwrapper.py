@@ -2,11 +2,18 @@
 
 # Imports
 
+import os
 import sys
 import datetime
 import shlex
+import pickle
 from subprocess import PIPE, Popen
-#from termcolor import colored, cprint
+
+state_path = "/var/cache/fwrapper/fw.state"
+try:
+    os.makedirs("/var/cache/fwrapper")
+except OSError, e:
+    pass
 
 def log(msg):
     date = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -20,13 +27,17 @@ def run(cmd):
 
     p = Popen(cmd, stdout=PIPE, stderr=PIPE)
     stdout, stderr = p.communicate()
-    if stdout:
+    if stdout and "debug" in sys.argv:
         log(stdout)
     if stderr:
+        print "Error:", " ".join(cmd)
         log(stderr)
-        sys.exit(1)
+        print "----------------------------------------------------"
+    return stdout
 
 # Classes
+
+class FWrapperException(Exception): pass
 
 class Color:
     header = '\033[95m'
@@ -98,16 +109,39 @@ class Firewall(object):
             cmds.append(["iptables", "-P", chain, self.policy[chain]])
             cmds.append(["ip6tables", "-P", chain, self.policy[chain]])
 
-        ##TODO:save rules on the disk to stop action
+        self.save_state()
             
         return cmds
+
+    def clean_chains(self):
+        tables = {
+            "filter": ("INPUT", "OUTPUT", "FORWARD"),
+            "nat": ("POSTROUTING", "INPUT", "OUTPUT", "PREROUTING"),
+        }
+
+        def clean(table, ignore, iptables):
+            stdout = run([iptables, "-t", table, "-L"])
+            for line in [x.split() for x in stdout.split("\n") if "Chain" in x.split()]:
+                run([iptables, "-t", table, "-F", line[1]])
+                if line[1] not in ignore: 
+                    run([iptables, "-t", table, "-X", line[1]])
+        for table in ("nat", "filter"):
+            clean(table, tables[table], "iptables")
+            if table != "nat": clean(table, tables[table], "ip6tables")
+
+    def clean_cmd_generator(self):
+        pass
 
     def stop_cmd_generator(self):
         cmds = []
 
-        ##TODO:load rules from the disk
+        try:
+            data = self.load_state()
+        except FWrapperException, e:
+            log("Load state from file problem")
+            sys.exit(1)
         
-        for ruletype in self.rules:
+        for ruletype in data:
             rules = self.rules[ruletype]
             rules.reverse()
             for rule in rules:
@@ -134,9 +168,36 @@ class Firewall(object):
             run(cmd) 
 
     def stop(self):
+        # Total clean
+        self.clean_chains()
+        return 
+
+        # Just what I've added
         cmds = self.stop_cmd_generator()
         for cmd in cmds:
             run(cmd) 
+
+    def save_state(self):
+        data = pickle.dumps(self.rules)
+        try:
+            f = open(state_path, "w")
+            f.write(data)
+            f.close()
+        except OSError:
+            raise FWrapperException("Save state problem")
+
+    def load_state(self):
+        try:
+            f = open(state_path)
+            data = pickle.loads(f.read())
+            f.close()
+        except OSError:
+            raise FWrapperException("Load state problem")
+        except IOError:
+            raise FWrapperException("Load state problem")
+        if not data:
+            FWrapperException("Load state problem")
+        return data
 
     def rule_format(self, rule):
         chain = ""
