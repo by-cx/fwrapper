@@ -170,6 +170,11 @@ class Firewall(object):
     def stop(self):
         # Total clean
         self.clean_chains()
+
+        for chain in self.policy:
+            run(["iptables", "-P", chain, "ACCEPT"])
+            run(["ip6tables", "-P", chain, "ACCEPT"])
+
         return 
 
         # Just what I've added
