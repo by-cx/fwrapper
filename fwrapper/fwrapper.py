@@ -60,6 +60,7 @@ class Firewall(object):
         "filter4": [],
         "filter6": [],
         "nat": [],
+        "mangle": [],
     }
     policy = {
             "INPUT": "ACCEPT",
@@ -90,6 +91,8 @@ class Firewall(object):
                         self.rules["filter6"].append(cmd[1:])
                     if cmd[0] == "nat":
                         self.rules["nat"].append(cmd[1:])
+                    if cmd[0] == "mangle":
+                        self.rules["mangle"].append(cmd[1:])
                     if cmd[0] in ["forward", "output", "input"]:
                         self.policy[cmd[0].upper()] = cmd[1].upper()
 
@@ -104,6 +107,8 @@ class Firewall(object):
                     cmds.append(["ip6tables", "-t", "filter"] + rule)
                 if ruletype == "nat":
                     cmds.append(["iptables", "-t", "nat"] + rule)
+                if ruletype == "mangle":
+                    cmds.append(["iptables", "-t", "mangle"] + rule)
 
         for chain in self.policy:
             cmds.append(["iptables", "-P", chain, self.policy[chain]])
@@ -117,6 +122,7 @@ class Firewall(object):
         tables = {
             "filter": ("INPUT", "OUTPUT", "FORWARD"),
             "nat": ("POSTROUTING", "INPUT", "OUTPUT", "PREROUTING"),
+            "mangle": ("POSTROUTING", "INPUT", "FORWARD", "OUTPUT", "PREROUTING"),
         }
 
         def clean(table, ignore, iptables):
@@ -125,9 +131,9 @@ class Firewall(object):
                 run([iptables, "-t", table, "-F", line[1]])
                 if line[1] not in ignore: 
                     run([iptables, "-t", table, "-X", line[1]])
-        for table in ("nat", "filter"):
+        for table in ("nat", "filter", "mangle"):
             clean(table, tables[table], "iptables")
-            if table != "nat": clean(table, tables[table], "ip6tables")
+            if table not in ("nat", "filter"): clean(table, tables[table], "ip6tables")
 
     def clean_cmd_generator(self):
         pass
@@ -153,6 +159,8 @@ class Firewall(object):
                     cmds.append(["ip6tables", "-t", "filter"] + rule)
                 if ruletype == "nat":
                     cmds.append(["iptables", "-t", "nat"] + rule)
+                if ruletype == "mangle":
+                    cmds.append(["iptables", "-t", "mangle"] + rule)
 
         for chain in self.policy:
             cmds.append(["iptables", "-P", chain, "ACCEPT"])
